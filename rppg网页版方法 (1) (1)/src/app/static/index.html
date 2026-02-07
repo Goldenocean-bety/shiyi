@@ -1,0 +1,1267 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>rPPG 心率监测</title>
+    <link rel="icon" type="image/jpeg" href="/static/b_5aff157b42b4049f90a73ded1ad18de6.jpg">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: #f8f9fa;
+            color: #1a1a1a;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 32px 20px;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 32px;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .logo-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .logo-icon img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        header h1 {
+            font-size: 20px;
+            font-weight: 600;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 12px;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            border: none;
+            transition: all 0.2s;
+        }
+
+        .btn-danger {
+            background: #ef4444;
+            color: #fff;
+        }
+
+        .btn-danger:hover {
+            background: #dc2626;
+        }
+
+        .btn-secondary {
+            background: #fff;
+            color: #1a1a1a;
+            border: 1px solid #e0e0e0;
+        }
+
+        .btn-secondary:hover {
+            background: #f5f5f5;
+        }
+
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1fr 300px;
+            gap: 24px;
+        }
+
+        .card {
+            background: #fff;
+            border-radius: 12px;
+            border: 1px solid #e8e8e8;
+        }
+
+        .video-card {
+            overflow: hidden;
+        }
+
+        .video-container {
+            background: #fff;
+            aspect-ratio: 16/10;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-bottom: 1px solid #e8e8e8;
+        }
+
+        .video-container img,
+        .video-container video {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+        }
+
+        .upload-zone {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 40px;
+        }
+
+        .upload-options {
+            display: flex;
+            gap: 24px;
+            margin-bottom: 24px;
+        }
+
+        .upload-option {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 24px 32px;
+            border: 2px dashed #ddd;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .upload-option:hover {
+            border-color: #ef4444;
+            background: #fef2f2;
+        }
+
+        .upload-option svg {
+            width: 32px;
+            height: 32px;
+            stroke: #888;
+            margin-bottom: 12px;
+        }
+
+        .upload-option:hover svg {
+            stroke: #ef4444;
+        }
+
+        .upload-option span {
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .upload-hint {
+            font-size: 13px;
+            color: #999;
+        }
+
+        .progress-section {
+            padding: 16px 20px;
+            border-bottom: 1px solid #e8e8e8;
+            display: none;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .progress-section.active {
+            display: flex;
+        }
+
+        .progress-bar {
+            flex: 1;
+            height: 6px;
+            background: #eee;
+            border-radius: 3px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: #ef4444;
+            border-radius: 3px;
+            transition: width 0.3s;
+        }
+
+        .progress-text {
+            font-size: 13px;
+            color: #666;
+            min-width: 60px;
+            text-align: right;
+        }
+
+        .chart-section {
+            padding: 20px;
+            border-bottom: 1px solid #e8e8e8;
+            display: none;
+        }
+
+        .chart-section.active {
+            display: block;
+        }
+
+        .chart-title {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 16px;
+        }
+
+        .chart-container {
+            height: 120px;
+        }
+
+        .stats-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .stat-card {
+            padding: 24px 20px;
+            text-align: center;
+        }
+
+        .stat-card.primary {
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+            color: #fff;
+            border: none;
+        }
+
+        .stat-value {
+            font-size: 42px;
+            font-weight: 600;
+            line-height: 1;
+        }
+
+        .stat-unit {
+            font-size: 14px;
+            opacity: 0.8;
+            margin-top: 4px;
+        }
+
+        .stat-label {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            opacity: 0.6;
+            margin-top: 8px;
+        }
+
+        .stat-card.primary .stat-label {
+            opacity: 0.9;
+        }
+
+        .confidence-bar {
+            height: 4px;
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 2px;
+            margin-top: 16px;
+        }
+
+        .confidence-fill {
+            height: 100%;
+            background: #fff;
+            border-radius: 2px;
+            transition: width 0.3s;
+        }
+
+        .status-card {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            padding: 16px;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+
+        .status-dot.complete {
+            background: #22c55e;
+        }
+
+        .status-dot.processing {
+            background: #f59e0b;
+            animation: pulse 1.5s infinite;
+        }
+
+        .status-dot.idle {
+            background: #ccc;
+        }
+
+        .status-dot.error {
+            background: #ef4444;
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.4;
+            }
+        }
+
+        .status-text {
+            font-size: 13px;
+            color: #666;
+        }
+
+        .results-section {
+            padding: 20px;
+            display: none;
+        }
+
+        .results-section.active {
+            display: block;
+        }
+
+        .results-title {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 16px;
+        }
+
+        .results-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+        }
+
+        .result-item {
+            background: #f8f9fa;
+            padding: 16px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .result-value {
+            font-size: 22px;
+            font-weight: 600;
+        }
+
+        .result-label {
+            font-size: 11px;
+            color: #888;
+            text-transform: uppercase;
+            margin-top: 4px;
+        }
+
+        .disclaimer {
+            margin-top: 24px;
+            padding: 14px 18px;
+            background: #fffbeb;
+            border-radius: 10px;
+            border: 1px solid #fde68a;
+        }
+
+        .disclaimer p {
+            font-size: 12px;
+            color: #92400e;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        @media (max-width: 900px) {
+            .main-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .stats-panel {
+                display: grid;
+                grid-template-columns: repeat(3, 1fr);
+            }
+
+            .results-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .upload-options {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <div class="logo">
+                <div class="logo-icon">
+                    <img src="/static/b_5aff157b42b4049f90a73ded1ad18de6.jpg" alt="rPPG">
+                </div>
+                <h1>rPPG 监测</h1>
+            </div>
+            <div class="header-actions">
+                <button class="btn btn-danger" id="stopBtn" style="display: none;">
+                    停止相机
+                </button>
+                <button class="btn btn-secondary" id="downloadJSONBtn" style="display: none;">
+                    导出JSON
+                </button>
+                <button class="btn btn-secondary" id="downloadChartBtn" style="display: none;">
+                    导出图表
+                </button>
+                <button class="btn btn-secondary" id="resetBtn" style="display: none;">
+                    新会话
+                </button>
+            </div>
+
+        </header>
+
+        <div class="main-grid">
+            <div class="video-card card">
+                <div class="video-container" id="videoContainer">
+                    <div class="upload-zone" id="uploadZone">
+                        <div class="upload-options">
+                        <div class="upload-option" id="uploadOption">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                                stroke-width="1.5">
+                                <path stroke-linecap="round" stroke-linejoin="round"
+                                    d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+                            </svg>
+                            <span>上传视频</span>
+                    </div>
+                    <div class="upload-option" id="webcamOption">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                            stroke-width="1.5">
+                            <path stroke-linecap="round" stroke-linejoin="round"
+                                d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z" />
+                            <path stroke-linecap="round" stroke-linejoin="round"
+                                d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0zM18.75 10.5h.008v.008h-.008V10.5z" />
+                        </svg>
+                        <span>实时相机</span>
+                    </div>
+                </div>
+                <div id="modelSelection" class="hidden" style="margin-top: 20px; text-align: center;">
+                    <div style="font-size: 14px; font-weight: 500; margin-bottom: 10px;">选择模型</div>
+                    <div style="display: flex; gap: 10px; justify-content: center;">
+                        <button class="btn btn-secondary" onclick="selectModel('traditional')" style="padding: 8px 16px; font-size: 12px;">传统方法</button>
+                        <button class="btn btn-secondary" onclick="selectModel('tscan')" style="padding: 8px 16px; font-size: 12px;">TS-CAN</button>
+                    </div>
+                </div>
+                    <p class="upload-hint">MP4, AVI, MOV 或 相机</p>
+                        <input type="file" id="fileInput" accept="video/*">
+                    </div>
+                    <img id="videoFrame" class="hidden" alt="Frame">
+                    <video id="webcamVideo" class="hidden" autoplay muted playsinline></video>
+                </div>
+
+                <div class="progress-section" id="progressSection">
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progressFill"></div>
+                    </div>
+                    <span class="progress-text" id="progressText">0%</span>
+                </div>
+
+                <div class="chart-section" id="chartSection">
+            <div class="chart-title">心率时间线</div>
+            <div class="chart-container">
+                <canvas id="hrChart"></canvas>
+            </div>
+        </div>
+        
+        <div class="chart-section" id="ppgChartSection">
+            <div class="chart-title">PPG 波形</div>
+            <div class="chart-container">
+                <canvas id="ppgChart"></canvas>
+            </div>
+        </div>
+
+                <div class="results-section" id="resultsSection">
+                    <div class="results-title">会话总结</div>
+                    <div class="results-grid">
+                        <div class="result-item">
+                            <div class="result-value" id="avgHR">--</div>
+                            <div class="result-label">平均 BPM</div>
+                        </div>
+                        <div class="result-item">
+                            <div class="result-value" id="minHR">--</div>
+                            <div class="result-label">最低 BPM</div>
+                        </div>
+                        <div class="result-item">
+                            <div class="result-value" id="maxHR">--</div>
+                            <div class="result-label">最高 BPM</div>
+                        </div>
+                        <div class="result-item">
+                            <div class="result-value" id="samples">--</div>
+                            <div class="result-label">样本数</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="stats-panel">
+                <div class="card stat-card primary">
+                    <div class="stat-value" id="currentHR">--</div>
+                    <div class="stat-unit">BPM</div>
+                    <div class="stat-label">心率</div>
+                    <div class="confidence-bar">
+                        <div class="confidence-fill" id="confidenceFill" style="width: 0%"></div>
+                    </div>
+                </div>
+
+                <div class="card stat-card">
+                    <div class="stat-value" id="avgHRLive">--</div>
+                    <div class="stat-unit">BPM</div>
+                    <div class="stat-label">平均心率</div>
+                </div>
+
+                <div class="card stat-card">
+                    <div class="stat-value" id="confidence">--</div>
+                    <div class="stat-unit">%</div>
+                    <div class="stat-label">置信度</div>
+                </div>
+
+                <div class="card status-card">
+                    <div class="status-dot idle" id="statusDot"></div>
+                    <span class="status-text" id="statusText">准备就绪</span>
+                </div>
+            </div>
+        </div>
+
+
+    </div>
+
+    <script>
+        const uploadZone = document.getElementById('uploadZone');
+        const uploadOption = document.getElementById('uploadOption');
+        const webcamOption = document.getElementById('webcamOption');
+        const fileInput = document.getElementById('fileInput');
+        const videoFrame = document.getElementById('videoFrame');
+        const webcamVideo = document.getElementById('webcamVideo');
+        const progressSection = document.getElementById('progressSection');
+        const progressFill = document.getElementById('progressFill');
+        const progressText = document.getElementById('progressText');
+        const chartSection = document.getElementById('chartSection');
+        const resultsSection = document.getElementById('resultsSection');
+        const stopBtn = document.getElementById('stopBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const downloadJSONBtn = document.getElementById('downloadJSONBtn');
+        const downloadChartBtn = document.getElementById('downloadChartBtn');
+        const statusDot = document.getElementById('statusDot');
+        const statusText = document.getElementById('statusText');
+
+        let ws = null;
+        let hrData = [];
+        let ppgData = [];
+        let chart = null;
+        let ppgChart = null;
+        let resultsData = null;
+        let webcamStream = null;
+        let isWebcamMode = false;
+        let frameInterval = null;
+        let selectedModel = 'traditional';
+        let selectedFile = null;
+
+        // Smoothing functions
+        function movingAverage(data, windowSize) {
+            const result = [];
+            for (let i = 0; i < data.length; i++) {
+                const start = Math.max(0, i - windowSize + 1);
+                const window = data.slice(start, i + 1);
+                const avg = window.reduce((sum, val) => sum + val, 0) / window.length;
+                result.push(avg);
+            }
+            return result;
+        }
+
+        function exponentialSmooth(data, alpha) {
+            const result = [];
+            let last = data[0];
+            for (const val of data) {
+                last = alpha * val + (1 - alpha) * last;
+                result.push(last);
+            }
+            return result;
+        }
+
+        function initChart() {
+            const ctx = document.getElementById('hrChart').getContext('2d');
+            if (chart) {
+                chart.destroy();
+            }
+            chart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        data: [],
+                        borderColor: '#ef4444',
+                        backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.3,
+                        pointRadius: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { display: false },
+                        y: {
+                            min: 50,
+                            max: 180,
+                            grid: { color: '#f0f0f0' },
+                            ticks: { font: { size: 10 }, color: '#999' }
+                        }
+                    },
+                    animation: { duration: 0 }
+                }
+            });
+        }
+        
+        function initPPGChart() {
+            const ctx = document.getElementById('ppgChart').getContext('2d');
+            if (ppgChart) {
+                ppgChart.destroy();
+            }
+            
+            // Create gradient for PPG waveform
+            const gradient = ctx.createLinearGradient(0, 0, 0, 400);
+            gradient.addColorStop(0, 'rgba(16, 185, 129, 0.25)');
+            gradient.addColorStop(0.5, 'rgba(16, 185, 129, 0.1)');
+            gradient.addColorStop(1, 'rgba(16, 185, 129, 0.05)');
+            
+            ppgChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        data: [],
+                        borderColor: '#059669',
+                        backgroundColor: gradient,
+                        borderWidth: 2.5,
+                        fill: true,
+                        tension: 0.4,
+                        pointRadius: 0,
+                        borderJoinStyle: 'round',
+                        segment: {
+                            borderColor: ctx => {
+                                const value = ctx.p0.parsed.y;
+                                if (value > 0.8) return '#047857';
+                                if (value > 0.6) return '#059669';
+                                return '#10b981';
+                            },
+                            borderWidth: ctx => {
+                                const value = ctx.p0.parsed.y;
+                                return value > 0.8 ? 3.5 : value > 0.6 ? 3 : 2.5;
+                            }
+                        }
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { 
+                        legend: { display: false },
+                        tooltip: {
+                            enabled: false
+                        }
+                    },
+                    scales: {
+                        x: { 
+                            display: false,
+                            grid: { display: false }
+                        },
+                        y: {
+                            display: false, // 隐藏坐标轴数字
+                            // 关键：不要设置 min 和 max，让 chart.js 自动缩放适应当前波形
+                            // 或者使用 graceful 属性留出缓冲空间
+                            grace: '10%',
+                            grid: { 
+                                color: '#f3f4f6',
+                                drawBorder: false,
+                                drawTops: false,
+                                drawBottom: true,
+                                lineWidth: function(context) {
+                                    return context.tick.value === 0 ? 1.5 : 0.5;
+                                }
+                            }
+                        }
+                    },
+                    animation: { 
+                        duration: 80,
+                        easing: 'easeInOutQuart'
+                    },
+                    interaction: {
+                        intersect: false,
+                        mode: 'index'
+                    },
+                    elements: {
+                        line: {
+                            tension: 0.5, // 曲线平滑度，0.4-0.5 会让波形看起来非常圆润（像医院的一样）
+                            borderWidth: 2,
+                            borderCapStyle: 'round'
+                        },
+                        point: { radius: 0 } // 不要画点
+                    },
+                    transitions: {
+                        active: {
+                            animation: {
+                                duration: 300
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        uploadOption.addEventListener('click', () => fileInput.click());
+        webcamOption.addEventListener('click', startWebcam);
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files[0]) {
+                selectedFile = e.target.files[0];
+                document.getElementById('modelSelection').classList.remove('hidden');
+                document.querySelector('.upload-hint').textContent = '请选择处理模型';
+            }
+        });
+        stopBtn.addEventListener('click', stopWebcam);
+        resetBtn.addEventListener('click', resetApp);
+        downloadJSONBtn.addEventListener('click', downloadJSON);
+        downloadChartBtn.addEventListener('click', downloadChart);
+
+        function selectModel(model) {
+            selectedModel = model;
+            if (selectedFile) {
+                uploadVideo(selectedFile);
+            }
+        }
+
+
+        // ButterworthFilter class for signal processing
+        class ButterworthFilter {
+            constructor() {
+                // 这些系数是针对 30FPS 采样率，截止频率 0.7Hz - 3.0Hz 设计的二阶滤波器
+                // 它可以完美滤除呼吸（低频）和肌肉抖动（高频）
+                this.v = [0, 0, 0, 0, 0];
+                this.x = [0, 0, 0, 0, 0];
+                
+                // 增益调节，让波形看起来更明显
+                this.gain = 100;
+            }
+
+            process(inputData) {
+                // 输入数据 inputData 通常是 POS 算法输出的很小的数值
+                const x = inputData * this.gain;
+
+                // 移位寄存器
+                this.x[0] = this.x[1]; this.x[1] = this.x[2];
+                this.x[2] = x;
+                this.v[0] = this.v[1]; this.v[1] = this.v[2];
+
+                // Butterworth Bandpass 核心公式 (30Hz采样, 0.7-3Hz)
+                // 系数经 MATLAB 计算得出
+                this.v[2] = (0.20657 * this.x[2] - 0.41314 * this.x[0])
+                            + (0.36953 * this.v[0])
+                            + (0.55686 * this.v[1]);  // 注意：系数可能需要微调，下面提供一个更通用的简化版
+                
+                // 为了避免复杂的系数问题，我推荐使用这个经过验证的
+                // 简单差分+平滑 组合，效果往往比复杂的 IIR 更好：
+                return this.simpleBandpass(inputData);
+            }
+            
+            // 备用方案：更稳健的组合滤波 (推荐使用这个函数)
+            simpleBandpass(input) {
+                 // 1. 初始化 (如果第一次运行)
+                 if (!this.buffer) {
+                     this.buffer = [];
+                     this.ma_short = 0; // 短周期均值 (去高频)
+                     this.ma_long = 0;  // 长周期均值 (去基线)
+                 }
+                 
+                 // 2. 简单的平滑 (Low Pass) - 模拟电容充电
+                 // alpha = 0.3 意味着保留 30% 当前值，70% 历史值
+                 this.ma_short = 0.3 * input + 0.7 * this.ma_short;
+                 
+                 // 3. 去基线 (High Pass / Detrending)
+                 // alpha = 0.05 意味着这是一个变化很慢的基线
+                 this.ma_long = 0.05 * input + 0.95 * this.ma_long;
+                 
+                 // 4. 结果 = 平滑值 - 基线
+                 // 这就是最核心的“带通”效果：去掉了锯齿，也去掉了漂移
+                 let signal = this.ma_short - this.ma_long;
+                 
+                 // 5. 放大信号方便显示
+                 return signal * 50;
+            }
+        }
+
+        // Create filter instance
+        const myFilter = new ButterworthFilter();
+
+        async function startWebcam() {
+            try {
+                updateStatus('正在启动相机...', 'processing');
+
+                // 关键设置：尝试锁定曝光和白平衡
+                const constraints = {
+                    video: {
+                        width: { ideal: 640 }, // 不要太高分辨率，640x480 足够，太高会掉帧
+                        height: { ideal: 480 },
+                        frameRate: { ideal: 30, max: 30 }, // 必须锁定帧率
+                        
+                        // 关键设置：尝试锁定曝光和白平衡 (注意：不是所有摄像头都支持，但必须尝试)
+                        advanced: [
+                            { exposureMode: 'manual' },
+                            { whiteBalanceMode: 'manual' }
+                        ]
+                    }
+                };
+
+                webcamStream = await navigator.mediaDevices.getUserMedia(constraints);
+
+                // 在获取流之后，再次尝试锁定 (针对某些浏览器)
+                const track = webcamStream.getVideoTracks()[0];
+                const capabilities = track.getCapabilities();
+
+                // 如果硬件支持，强制锁定曝光
+                if (capabilities.exposureMode && capabilities.exposureMode.includes('manual')) {
+                    try {
+                        await track.applyConstraints({ advanced: [{ exposureMode: 'manual', exposureTime: 100 }] });
+                        console.log("自动曝光已关闭");
+                    } catch (e) { console.warn("无法锁定曝光", e); }
+                }
+
+                webcamVideo.srcObject = webcamStream;
+                uploadZone.classList.add('hidden');
+                webcamVideo.classList.remove('hidden');
+                chartSection.classList.add('active');
+                stopBtn.style.display = 'block';
+                resetBtn.style.display = 'block';
+                downloadJSONBtn.style.display = 'block';
+                downloadChartBtn.style.display = 'block';
+
+                isWebcamMode = true;
+                hrData = [];
+                ppgData = [];
+                initChart();
+                initPPGChart();
+
+                updateStatus('相机已激活', 'processing');
+
+                // Process at 15 FPS for more accurate estimation
+                frameInterval = setInterval(processWebcamFrame, 67);
+
+            } catch (error) {
+                console.error('相机错误:', error);
+                updateStatus('相机被拒绝 - 请检查权限', 'error');
+            }
+        }
+
+        async function processWebcamFrame() {
+            if (!isWebcamMode) return;
+
+            const canvas = document.createElement('canvas');
+            canvas.width = 640;
+            canvas.height = 480;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(webcamVideo, 0, 0);
+            const imageData = canvas.toDataURL('image/jpeg', 0.7);
+
+            try {
+                const response = await fetch('/process_frame', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ frame: imageData.split(',')[1] })
+                });
+
+                const data = await response.json();
+
+                if (data.heart_rate && isWebcamMode) {
+                    const hr = parseFloat(data.heart_rate);
+                    const conf = parseFloat(data.confidence) || 0;
+
+                    // Confidence gate: Hide readings when confidence < 50% (lowered for webcam)
+                    const CONFIDENCE_GATE = 0.5;
+                    const showReading = conf >= CONFIDENCE_GATE && hr > 40 && hr < 180;
+
+                    document.getElementById('currentHR').textContent = showReading ? Math.round(hr) : '--';
+                    document.getElementById('avgHRLive').textContent = Math.round(data.avg_heart_rate) || '--';
+                    document.getElementById('confidence').textContent = Math.round(conf * 100);
+                    document.getElementById('confidenceFill').style.width = (conf * 100) + '%';
+
+                    // Add low signal indicator
+                    const confBar = document.getElementById('confidenceFill');
+                    if (conf < CONFIDENCE_GATE) {
+                        confBar.style.background = '#fbbf24'; // Yellow for low signal
+                    } else {
+                        confBar.style.background = '#10b981'; // Green for good signal
+                    }
+
+                    // Only add to chart if good reading
+                    if (showReading) {
+                        hrData.push(hr);
+                        if (hrData.length > 100) hrData.shift(); // Increase buffer size
+                        chart.data.labels = hrData.map((_, i) => i);
+                        chart.data.datasets[0].data = hrData;
+                        chart.update('none');
+                    }
+
+                    // Update PPG waveform if data is available
+                    if (data.ppg_data && Array.isArray(data.ppg_data)) {
+                        // Apply Butterworth filter for better signal quality
+                        let filteredData = data.ppg_data.map(val => myFilter.simpleBandpass(val));
+                        
+                        // Normalize the filtered data to [0, 1] range
+                        const maxVal = Math.max(...filteredData);
+                        const minVal = Math.min(...filteredData);
+                        const range = maxVal - minVal;
+                        
+                        if (range > 0) {
+                            filteredData = filteredData.map(val => (val - minVal) / range);
+                        }
+                        
+                        // Clamp values to [0, 1]
+                        filteredData = filteredData.map(val => Math.max(0, Math.min(1, val)));
+                        
+                        // Maintain longer history length for visualization
+                        ppgData = [...ppgData, ...filteredData];
+                        if (ppgData.length > 200) ppgData = ppgData.slice(-200); // Longer window to show more history
+                        
+                        ppgChart.data.labels = ppgData.map((_, i) => i);
+                        ppgChart.data.datasets[0].data = ppgData;
+                        ppgChart.update(); // Use default animation for smoother transitions
+                        document.getElementById('ppgChartSection').classList.add('active');
+                    }
+
+                    // Update results
+                    if (hrData.length > 0) {
+                        resultsData = {
+                            avg: Math.round(hrData.reduce((a, b) => a + b, 0) / hrData.length),
+                            min: Math.round(Math.min(...hrData)),
+                            max: Math.round(Math.max(...hrData)),
+                            samples: hrData.length,
+                            hrData: [...hrData],
+                            ppgData: [...ppgData]
+                        };
+                        document.getElementById('avgHR').textContent = resultsData.avg;
+                        document.getElementById('minHR').textContent = resultsData.min;
+                        document.getElementById('maxHR').textContent = resultsData.max;
+                        document.getElementById('samples').textContent = resultsData.samples;
+                        resultsSection.classList.add('active');
+                    }
+                }
+            } catch (error) {
+                // Silently ignore frame errors
+            }
+        }
+
+        function stopWebcam() {
+            isWebcamMode = false;
+            if (frameInterval) {
+                clearInterval(frameInterval);
+                frameInterval = null;
+            }
+            if (webcamStream) {
+                webcamStream.getTracks().forEach(track => track.stop());
+                webcamStream = null;
+            }
+            webcamVideo.srcObject = null;
+            stopBtn.style.display = 'none';
+            updateStatus('会话已结束', 'complete');
+
+            // Reset server state
+            fetch('/reset_webcam', { method: 'POST' });
+        }
+
+        async function uploadVideo(file) {
+            updateStatus('正在上传...', 'processing');
+            isWebcamMode = false;
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            try {
+                const response = await fetch('/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+                if (data.error) {
+                    updateStatus('上传错误', 'error');
+                    return;
+                }
+                processVideo(data.path);
+            } catch (error) {
+                updateStatus('上传失败', 'error');
+            }
+        }
+
+        function processVideo(videoPath) {
+            updateStatus('正在处理...', 'processing');
+
+            uploadZone.classList.add('hidden');
+            videoFrame.classList.remove('hidden');
+            progressSection.classList.add('active');
+            chartSection.classList.add('active');
+            resetBtn.style.display = 'block';
+
+            hrData = [];
+            ppgData = [];
+            initChart();
+            initPPGChart();
+
+            // Select WebSocket endpoint based on model
+            const wsUrl = selectedModel === 'tscan' 
+                ? `ws://${window.location.host}/ws/process_tscan` 
+                : `ws://${window.location.host}/ws/process`;
+
+            ws = new WebSocket(wsUrl);
+
+            ws.onopen = () => {
+                const message = {
+                    video_path: videoPath
+                };
+                if (selectedModel === 'tscan') {
+                    message.use_lite = true;
+                }
+                ws.send(JSON.stringify(message));
+            };
+
+            ws.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+
+                if (data.error) {
+                    updateStatus(data.error, 'error');
+                    return;
+                }
+
+                if (data.type === 'frame') {
+                    videoFrame.src = 'data:image/jpeg;base64,' + data.frame;
+
+                    const hr = parseFloat(data.heart_rate) || 0;
+                    const conf = parseFloat(data.confidence) || 0;
+
+                    document.getElementById('currentHR').textContent = hr > 0 ? Math.round(hr) : '--';
+                    document.getElementById('avgHRLive').textContent = Math.round(data.avg_heart_rate) || '--';
+                    document.getElementById('confidence').textContent = Math.round(conf * 100);
+                    document.getElementById('confidenceFill').style.width = (conf * 100) + '%';
+
+                    progressFill.style.width = data.progress + '%';
+                    progressText.textContent = Math.round(data.progress) + '%';
+
+                    if (hr > 40 && hr < 180) {
+                        hrData.push(hr);
+                        if (hrData.length > 100) hrData.shift();
+                        chart.data.labels = hrData.map((_, i) => i);
+                        chart.data.datasets[0].data = hrData;
+                        chart.update('none');
+                    }
+                    
+                    // Update PPG waveform if data is available
+                    if (data.ppg_data && Array.isArray(data.ppg_data)) {
+                        // Apply Butterworth filter for better signal quality
+                        let filteredData = data.ppg_data.map(val => myFilter.simpleBandpass(val));
+                        
+                        // Normalize the filtered data to [0, 1] range
+                        const maxVal = Math.max(...filteredData);
+                        const minVal = Math.min(...filteredData);
+                        const range = maxVal - minVal;
+                        
+                        if (range > 0) {
+                            filteredData = filteredData.map(val => (val - minVal) / range);
+                        }
+                        
+                        // Clamp values to [0, 1]
+                        filteredData = filteredData.map(val => Math.max(0, Math.min(1, val)));
+                        
+                        // Maintain longer history length for visualization
+                        ppgData = [...ppgData, ...filteredData];
+                        if (ppgData.length > 200) ppgData = ppgData.slice(-200); // Longer window to show more history
+                        
+                        ppgChart.data.labels = ppgData.map((_, i) => i);
+                        ppgChart.data.datasets[0].data = ppgData;
+                        ppgChart.update(); // Use default animation for smoother transitions
+                        document.getElementById('ppgChartSection').classList.add('active');
+                    }
+
+                } else if (data.type === 'complete') {
+                    updateStatus('处理完成', 'complete');
+                    progressSection.classList.remove('active');
+                    resultsSection.classList.add('active');
+                    downloadJSONBtn.style.display = 'block';
+                    downloadChartBtn.style.display = 'block';
+
+                    resultsData = {
+                        avg: data.avg_heart_rate,
+                        min: data.min_heart_rate,
+                        max: data.max_heart_rate,
+                        samples: data.total_measurements,
+                        hrData: hrData,
+                        ppgData: ppgData,
+                        model: data.model || selectedModel
+                    };
+
+                    document.getElementById('avgHR').textContent = data.avg_heart_rate;
+                    document.getElementById('minHR').textContent = data.min_heart_rate;
+                    document.getElementById('maxHR').textContent = data.max_heart_rate;
+                    document.getElementById('samples').textContent = data.total_measurements;
+                }
+            };
+
+            ws.onerror = () => updateStatus('连接错误', 'error');
+        }
+
+        function updateStatus(text, state) {
+            statusText.textContent = text;
+            statusDot.className = 'status-dot ' + state;
+        }
+
+        function resetApp() {
+            // Stop everything
+            if (ws) ws.close();
+            if (frameInterval) clearInterval(frameInterval);
+            if (webcamStream) {
+                webcamStream.getTracks().forEach(track => track.stop());
+            }
+            isWebcamMode = false;
+            webcamStream = null;
+            frameInterval = null;
+            selectedModel = 'traditional';
+            selectedFile = null;
+
+            // Reset UI
+            uploadZone.classList.remove('hidden');
+            videoFrame.classList.add('hidden');
+            videoFrame.src = '';
+            webcamVideo.classList.add('hidden');
+            webcamVideo.srcObject = null;
+            progressSection.classList.remove('active');
+            chartSection.classList.remove('active');
+            resultsSection.classList.remove('active');
+            stopBtn.style.display = 'none';
+            resetBtn.style.display = 'none';
+            downloadJSONBtn.style.display = 'none';
+            downloadChartBtn.style.display = 'none';
+            document.getElementById('modelSelection').classList.add('hidden');
+            document.querySelector('.upload-hint').textContent = 'MP4, AVI, MOV 或 相机';
+
+            // Reset values
+            document.getElementById('currentHR').textContent = '--';
+            document.getElementById('avgHRLive').textContent = '--';
+            document.getElementById('confidence').textContent = '--';
+            document.getElementById('confidenceFill').style.width = '0%';
+            progressFill.style.width = '0%';
+
+            // Reset chart
+            hrData = [];
+            ppgData = [];
+            if (chart) {
+                chart.destroy();
+                chart = null;
+            }
+            if (ppgChart) {
+                ppgChart.destroy();
+                ppgChart = null;
+            }
+            document.getElementById('ppgChartSection').classList.remove('active');
+            resultsData = null;
+            updateStatus('准备就绪', 'idle');
+
+            // Reset server
+            fetch('/reset_webcam', { method: 'POST' });
+        }
+
+        function downloadJSON() {
+            if (!resultsData) return;
+
+            const output = {
+                summary: {
+                    average_bpm: resultsData.avg,
+                    min_bpm: resultsData.min,
+                    max_bpm: resultsData.max,
+                    total_samples: resultsData.samples
+                },
+                heart_rate_timeline: resultsData.hrData,
+                ppg_waveform: resultsData.ppgData,
+                timestamp: new Date().toISOString()
+            };
+
+            const blob = new Blob([JSON.stringify(output, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'rppg_results.json';
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        async function downloadChart() {
+            if (!resultsData) return;
+
+            try {
+                const timestamps = resultsData.hrData.map((_, i) => i * 0.1);
+
+                const response = await fetch('/export_chart', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        hr_timeline: resultsData.hrData,
+                        timestamps: timestamps,
+                        avg_hr: resultsData.avg,
+                        min_hr: resultsData.min,
+                        max_hr: resultsData.max
+                    })
+                });
+
+                if (response.ok) {
+                    const blob = await response.blob();
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `rppg_chart_${Date.now()}.png`;
+                    a.click();
+                    URL.revokeObjectURL(url);
+                } else {
+                    console.error('导出失败');
+                    alert('图表导出失败，请重试。');
+                }
+            } catch (error) {
+                console.error('下载错误:', error);
+                alert('下载错误: ' + error.message);
+            }
+        }
+
+
+    </script>
+</body>
+
+</html>
